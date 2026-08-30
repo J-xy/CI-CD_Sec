@@ -1,0 +1,35 @@
+# Terraform
+#
+# State files are the important entry here: terraform stores every
+# attribute in plaintext, including `password` on aws_db_instance.
+# A committed tfstate leaks the credential regardless of how the
+# value was supplied.
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfplan
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# Environment
+.env
+.env.*
+
+# Scanner output
+*.sarif
+sbom.json
+sbom.cyclonedx.json
+
+# macOS
+.DS_Store
