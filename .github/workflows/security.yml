@@ -79,3 +79,53 @@ jobs:
         with:
           sarif_file: checkov.sarif
           category: checkov
+
+  container-scanning:
+    name: Trivy Container Scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Build Image
+        run: docker build -t demo-app:latest ./app
+
+      - name: Trivy FS Scan (Advisory)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: './app'
+          format: 'sarif'
+          output: 'trivy-fs.sarif'
+        continue-on-error: true
+
+      - name: Upload Trivy FS SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-fs.sarif'
+          category: 'trivy-fs'
+
+      - name: Trivy Image Scan (Advisory)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'demo-app:latest'
+          format: 'sarif'
+          output: 'trivy-image.sarif'
+        continue-on-error: true
+
+      - name: Upload Trivy Image SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-image.sarif'
+          category: 'trivy-image'
+
+      - name: Trivy Image Scan (Blocking Gate)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'demo-app:latest'
+          exit-code: '1'
+          ignore-unfixed: true
+          severity: 'CRITICAL'
