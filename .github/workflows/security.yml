@@ -158,3 +158,20 @@ jobs:
           name: container-sbom
           path: sbom-cyclonedx.json
           retention-days: 90
+
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  schedule:
+    # Runs every Monday at 04:00 UTC
+    - cron: '0 4 * * 1'
+
+# Instead of actions/checkout@v4
+uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+
+permissions:
+  contents: read
