@@ -129,3 +129,32 @@ jobs:
           exit-code: '1'
           ignore-unfixed: true
           severity: 'CRITICAL'
+
+  sbom-generation:
+    name: Generate SBOM
+    runs-on: ubuntu-latest
+    needs: container-scanning # Runs after the build completes
+    # The container gate exits 1 on fixable CRITICALs, so without this the
+    # SBOM would never be produced -- and a failing build is exactly when
+    # the inventory is most useful.
+    if: always()
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Build Image for SBOM
+        run: docker build -t demo-app:latest ./app
+
+      - name: Generate CycloneDX SBOM with Syft
+        uses: anchore/sbom-action@v0
+        with:
+          image: "demo-app:latest"
+          format: "cyclonedx-json"
+          output-file: "sbom-cyclonedx.json"
+
+      - name: Upload SBOM Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: container-sbom
+          path: sbom-cyclonedx.json
+          retention-days: 90
