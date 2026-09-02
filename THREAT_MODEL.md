@@ -4,6 +4,8 @@ Scope: the security pipeline in `.github/workflows/security.yml`, the GitHub rep
 
 Last reviewed 2026-09-01 against `main` at commit `621d4cc`. Every control claim below was verified by running the tools and reading the resulting logs, not inferred from documentation.
 
+**`main`'s pipeline is currently broken and running no checks at all — see §3.8 before anything else.**
+
 **This document describes `main` as it stands.** Several findings below have fixes already prepared in PR #5 (`feature/remediation-fixes`); each says so explicitly. Re-review when that PR merges — §3.3 in particular changes character.
 
 ---
@@ -46,7 +48,7 @@ The pipeline triggers on `pull_request`, **not** `pull_request_target`. This is 
 
 ## 3. Threats
 
-Ordered by exploitability against `main` as it stands.
+Ordered by exploitability against `main` as it stands. **§3.8 is the one to read first** — the pipeline is not currently running on the default branch, which conditions everything else here.
 
 ### 3.1 Supply chain — mutable action references
 
@@ -61,7 +63,7 @@ Every run pulls whatever those branches contain at that moment. Compromise of an
 
 Tag pins (`actions/checkout@v4`, `gitleaks-action@v2`, `codeql-action@v3`, `sbom-action@v0`, `setup-terraform@v3`, `upload-artifact@v4`) are better but still mutable: a tag can be force-moved to a different commit.
 
-*STRIDE: Tampering, Elevation of Privilege.* **Highest-severity item in this model** — the only finding here with a plausible path to arbitrary code execution.
+*STRIDE: Tampering, Elevation of Privilege.* **Highest-severity item in this model** — the only finding here with a plausible path to arbitrary code execution. (§3.8 outranks it on *priority* only because the pipeline is down right now; this one outranks everything on impact.)
 
 Mitigation: pin every action to a full commit SHA with the version in a trailing comment. PR #5 pins the three `trivy-action` uses to `v0.36.0`, which narrows this but does not close it; `checkov-action@master` survives that PR untouched.
 
@@ -133,15 +135,35 @@ Two properties make this the most instructive finding here. First, the secret ga
 
 The `infra/` and `app/` fixtures are safe where they sit and dangerous if copied. The wildcard IAM policy and the `0.0.0.0/0` SSH rule are exactly the shapes that get lifted into real modules. Mitigation is documentary: every fixture carries an inline `# RULE:` comment naming the check it exists to trip.
 
-### 3.8 Workflow maintainability
+### 3.8 The pipeline on `main` does not run
 
-`security.yml` carries a duplicated `on:` block and a stray top-level `uses:` key after the final job. Runs still execute — GitHub tolerates the extra keys — so this is not a live control failure, but a workflow whose structure is not obvious is one whose gaps are hard to see. New jobs pasted into this file have landed at column 0 three times, parsing as top-level keys rather than jobs. Validate before pushing:
+**Every security control is currently inert on the default branch.** `main` at `621d4cc` produces:
+
+```
+X main Security Pipeline · 33549929436
+X This run likely failed because of a workflow file issue.
+```
+
+`security.yml` ends with a duplicated `on:` block, a duplicated `permissions:` block, and — the fatal item — a SHA-pinning *example* pasted as live YAML rather than as a comment:
+
+```yaml
+# Instead of actions/checkout@v4
+uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+```
+
+`uses:` is not a valid top-level workflow key, so GitHub rejects the file before any job starts. No gitleaks, no semgrep, no checkov, no trivy, no SBOM — since 2026-09-01T19:30.
+
+This is invisible from the pull request view. A `pull_request` event evaluates the workflow from the PR's head, so a branch carrying a corrected file shows a full green run while `main` itself executes nothing. PR #5 has been green throughout on a workflow `main` cannot parse.
+
+It is also the sharpest instance of this repository's own lesson (§4). A broken scanner reads as a red check. A broken *workflow* reads as no check at all — and an empty checks list is far easier to mistake for "nothing to report" than a red X is.
+
+*STRIDE: Denial of Service (total loss of the control plane).* **Highest-priority item in this model.** Fixed in PR #5, which rewrites the file; merging it restores the pipeline. Validate before every push:
 
 ```bash
 ruby -ryaml -e 'YAML.load_file(".github/workflows/security.yml")["jobs"].each_key{|k| puts k}'
 ```
 
-Cleaned up in PR #5.
+Related: new jobs pasted into this file have landed at column 0 three times, parsing as top-level keys rather than jobs. The same class of error, caught earlier only by luck.
 
 ---
 
@@ -168,7 +190,7 @@ Two rules, both learned the hard way here:
 
 **Red has usually meant a broken scanner, not a finding.** Every red build in this repository's history traced to misconfiguration — zero commits scanned, a 403, a missing SARIF input, an action that does not exist, a crashed runner — rather than a detection. Read the log before believing the colour.
 
-**Green means "these tools found nothing," never "this is safe."** Silence from a scanner with no applicable rule is indistinguishable from silence from a clean scan.
+**Green means "these tools found nothing," never "this is safe."** Silence from a scanner with no applicable rule is indistinguishable from silence from a clean scan — and *no checks at all*, as on `main` today (§3.8), is quieter still.
 
 ---
 
@@ -186,11 +208,11 @@ Two rules, both learned the hard way here:
 
 ## 6. Prioritised actions
 
-1. **Pin `checkov-action` and the three `trivy-action` uses to commit SHAs** (§3.1) — the only threat here with a plausible path to arbitrary code execution. PR #5 addresses only the Trivy half.
-2. **Reconcile the gate with reality** (§3.2) — add `Trivy Container Scan` to the required contexts, or stop calling it a hard gate. Currently the README overstates enforcement.
-3. **Restore `contents: read` on `iac-scanning` and `container-scanning` before merging PR #5** (§3.3).
-4. **Merge PR #5** — it clears §3.5 and §3.6 and cleans up §3.8.
+1. **Merge PR #5 to restore the pipeline** (§3.8) — `main` currently runs no security checks at all. Nothing else in this list matters while that holds. #5 also clears §3.5 and §3.6.
+2. **Restore `contents: read` on `iac-scanning` and `container-scanning`** (§3.3) — three lines, and best done inside #5 before it merges.
+3. **Pin `checkov-action` and the three `trivy-action` uses to commit SHAs** (§3.1) — the only threat here with a plausible path to arbitrary code execution. PR #5 addresses only the Trivy half.
+4. **Reconcile the gate with reality** (§3.2) — add `Trivy Container Scan` to the required contexts, or stop calling it a hard gate. Currently the README overstates enforcement.
 5. **Require approval for first-time contributors' workflow runs** (§3.4).
 6. **Address the Node 20 and CodeQL v3 deprecations** before they become failures.
 
-Items 1–3 are each small and independently shippable.
+Items 2–4 are each small and independently shippable.
