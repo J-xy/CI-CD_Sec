@@ -5,11 +5,13 @@ from flask import Flask, request, jsonify
 
 app = Flask(__name__)
 
-# RULE: gitleaks / generic-api-key
-# Planted fake secret (random string, not a real credential).
-# NB: avoid AWS's documentation key here -- "EXAMPLE" is a gitleaks
-# stopword, so the canonical wJalrXUtnFEMI/... value is never flagged.
-AWS_SECRET_KEY = "kQ7bZ2xVpL9dR4mN8sT1wY6uH3jF5gC0aE2iO7pX"
+# Load the secret from the environment. Never define credentials as
+# static strings in source -- anything committed here is compromised
+# the moment it is pushed, and stays in history after it is deleted.
+AWS_SECRET_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")
+
+if not AWS_SECRET_KEY:
+    raise ValueError("AWS_SECRET_ACCESS_KEY environment variable is not set")
 
 # Clean healthcheck endpoint
 @app.route("/health", methods=["GET"])

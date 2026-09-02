@@ -15,7 +15,7 @@ Security in CI/CD fails when it creates unacceptable friction for developers. Th
 | **Secret Scanning** | Gitleaks | Hardcoded AWS keys, tokens | Advisory | Standard Out |
 | **SAST** | Semgrep | SQLi, Command Injection (Python) | Advisory | SARIF |
 | **IaC Scanning** | Checkov | Terraform misconfigurations | Advisory (Soft Fail) | SARIF |
-| **Container Scan** | Trivy | Base image & OS packages | **Hard Gate (CRITICALs)** | SARIF |
+| **Container Scan** | Trivy | Base image, OS packages, secrets in image | **Hard Gate (CRITICALs)** | SARIF |
 | **SBOM Generation** | Syft | Ephemeral build layers | Artifact Retention | CycloneDX JSON |
 
 ## Pipeline Architecture
@@ -23,6 +23,7 @@ Security in CI/CD fails when it creates unacceptable friction for developers. Th
 1. **Trigger:** Runs on `push` and `pull_request` to `main`, plus a weekly `schedule` (cron) to catch newly disclosed zero-days in existing baselines.
 2. **Hardening:** GitHub Actions default permissions are explicitly revoked (`contents: read` at the top level), granting only `security-events: write` precisely where SARIF uploads occur.
 3. **Multi-Stage Build:** Dockerfile utilizes a `builder` pattern and creates a non-root `appuser` to minimize runtime attack surface.
+
 
 ## Threat Model
 
