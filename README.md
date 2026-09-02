@@ -23,3 +23,9 @@ Security in CI/CD fails when it creates unacceptable friction for developers. Th
 1. **Trigger:** Runs on `push` and `pull_request` to `main`, plus a weekly `schedule` (cron) to catch newly disclosed zero-days in existing baselines.
 2. **Hardening:** GitHub Actions default permissions are explicitly revoked (`contents: read` at the top level), granting only `security-events: write` precisely where SARIF uploads occur.
 3. **Multi-Stage Build:** Dockerfile utilizes a `builder` pattern and creates a non-root `appuser` to minimize runtime attack surface.
+
+## Threat Model
+
+A full threat model lives in [THREAT_MODEL.md](THREAT_MODEL.md).
+
+Its organising claim is that the deliberately vulnerable `app/` and `infra/` fixtures are *not* this repository's real attack surface — nothing applies the Terraform and nothing deploys the container, so those risks are latent. The live surface is the pipeline itself: a public repository that checks out untrusted code, builds it, and executes third-party actions on hosted runners.
