@@ -23,6 +23,7 @@ Security in CI/CD fails when it creates unacceptable friction for developers. Th
 1. **Trigger:** Runs on `push` and `pull_request` to `main`, plus a weekly `schedule` (cron) to catch newly disclosed zero-days in existing baselines.
 2. **Hardening:** GitHub Actions default permissions are explicitly revoked (`contents: read` at the top level), granting only `security-events: write` precisely where SARIF uploads occur.
 3. **Multi-Stage Build:** Dockerfile utilizes a `builder` pattern and creates a non-root `appuser` to minimize runtime attack surface.
+4. **Base Freshness:** The runtime stage runs `apt-get upgrade` at build time. A base tag is only as current as its last rebuild, so this closes the gap between Debian publishing a security patch and the image being republished. Only the runtime stage needs it — the builder's OS layers are discarded and never reach the scanned artifact.
 
 ## Runtime Configuration
 

@@ -11,6 +11,15 @@ RUN pip install --no-cache-dir -r requirements.txt
 # -- RUNTIME STAGE --
 FROM python:3.13-slim
 
+# Force security updates for system packages. The base tag is only as
+# fresh as its last rebuild, so this closes the window between Debian
+# publishing a patch and Docker Hub republishing the image. Only the
+# runtime stage needs it -- the builder's OS layers are discarded and
+# never reach the scanned artifact.
+RUN apt-get update && apt-get upgrade -y \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
 # Create a non-root user with an explicitly high UID
 # High UIDs prevent accidental overlap with host OS system users
 RUN useradd -m -u 10001 appuser
