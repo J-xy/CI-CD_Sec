@@ -74,7 +74,7 @@ jobs:
 
       - name: Upload Checkov SARIF
         uses: github/codeql-action/upload-sarif@v3
-        if: always()
+        if: always() && hashFiles('results.sarif') != ''
         with:
           sarif_file: results.sarif
           category: checkov-iac
@@ -102,7 +102,7 @@ jobs:
 
       - name: Upload Trivy FS SARIF
         uses: github/codeql-action/upload-sarif@v3
-        if: always()
+        if: always() && hashFiles('trivy-fs.sarif') != ''
         with:
           sarif_file: 'trivy-fs.sarif'
           category: trivy-fs
@@ -117,7 +117,7 @@ jobs:
 
       - name: Upload Trivy Image SARIF
         uses: github/codeql-action/upload-sarif@v3
-        if: always()
+        if: always() && hashFiles('trivy-image.sarif') != ''
         with:
           sarif_file: 'trivy-image.sarif'
           category: trivy-image

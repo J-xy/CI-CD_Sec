@@ -1,5 +1,5 @@
 # -- BUILD STAGE --
-FROM python:3.9-slim AS builder
+FROM python:3.13-slim AS builder
 
 # Create a virtual environment to keep dependencies neatly isolated for copying
 RUN python -m venv /opt/venv
@@ -9,7 +9,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # -- RUNTIME STAGE --
-FROM python:3.9-slim
+FROM python:3.13-slim
 
 # Create a non-root user with an explicitly high UID
 # High UIDs prevent accidental overlap with host OS system users
